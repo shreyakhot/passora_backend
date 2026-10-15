@@ -35,10 +35,11 @@ jobs:
         id: runner_ip
         run: |
           ip=$(curl -fsS https://checkip.amazonaws.com)
-          echo "ip=$ip" >> "$GITHUB_OUTPUT"
           aws ec2 authorize-security-group-ingress \
             --group-id "${{ secrets.EC2_SECURITY_GROUP_ID }}" \
             --protocol tcp --port 22 --cidr "$ip/32"
+          # Only set after the rule exists, so the revoke step runs only when needed.
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
 
       - name: Set up SSH key
         run: |
