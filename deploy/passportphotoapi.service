@@ -1,0 +1,17 @@
+# Template: deploy/deploy.sh fills in __USER__ and __APP_DIR__ and installs it
+# to /etc/systemd/system/passportphotoapi.service.
+[Unit]
+Description=Passport Photo Processing API (FastAPI)
+After=network.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__APP_DIR__
+ExecStart=__APP_DIR__/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=5
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
