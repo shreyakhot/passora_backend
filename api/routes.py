@@ -105,6 +105,7 @@ async def process_image(
     image: UploadFile = File(...),
     country_code: str = Form("US"),
     document_type: str = Form("passport"),
+    background_mode: str = Form("auto"),
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -117,8 +118,24 @@ async def process_image(
     6. Resize + compress
     7. Generate preview
     8. Upload results to Cloudinary
+
+    background_mode:
+      "auto" (default) replaces a background that fails validation.
+      "keep" is crop-only: the original pixels are only cropped, resized and
+      compressed. The background is never replaced and the frame is never padded
+      with a fill colour. Use it where the issuing authority rejects edited photos
+      (e.g. US passports). The background is still validated and reported in
+      metrics.background_valid.
     """
     start_time = time.time()
+
+    background_mode = (background_mode or "auto").strip().lower()
+    if background_mode not in ("auto", "keep"):
+        raise HTTPException(
+            status_code=400,
+            detail="background_mode must be 'auto' or 'keep'",
+        )
+    crop_only = background_mode == "keep"
 
     # ─── Load config ───
     config = get_config(country_code, document_type)
@@ -177,8 +194,10 @@ async def process_image(
         bg_validation = validate_background(cv_image, target_color=bg_color)
         background_corrected = False
 
-        # ─── Step 4: Background correction if needed ───
-        if not bg_validation.is_valid:
+        # ─── Step 4: Background correction if needed (never in crop-only mode) ───
+        if not bg_validation.is_valid and crop_only:
+            logger.info(f"Crop-only: keeping original background ({bg_validation.message})")
+        elif not bg_validation.is_valid:
             logger.info(f"Background invalid: {bg_validation.message}")
 
             corrected_image, success = correct_background(cv_image, target_color=bg_color)
@@ -196,7 +215,9 @@ async def process_image(
 
         # ─── Step 5: Crop ───
         try:
-            crop_result = compute_crop(cv_image, face, crown_y, config)
+            crop_result = compute_crop(
+                cv_image, face, crown_y, config, allow_padding=not crop_only
+            )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -240,6 +261,7 @@ async def process_image(
                 top_margin_pct=crop_result.top_margin_pct,
                 background_valid=bg_validation.is_valid,
                 background_corrected=background_corrected,
+                background_mode=background_mode,
             ),
         )
 

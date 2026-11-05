@@ -26,6 +26,10 @@ class ProcessingMetrics(BaseModel):
         default=False,
         description="Whether background was auto-corrected",
     )
+    background_mode: str = Field(
+        default="auto",
+        description="'auto' (background replaced if invalid) or 'keep' (crop only)",
+    )
 
 
 class ProcessResponse(BaseModel):

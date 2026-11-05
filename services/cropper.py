@@ -42,6 +42,7 @@ def compute_crop(
     face: FaceDetectionResult,
     crown_y: float,
     config: CountryConfig,
+    allow_padding: bool = True,
 ) -> CropResult:
     """
     Compute and execute the crop for a passport photo.
@@ -228,8 +229,25 @@ def compute_crop(
     bg_rgb = _parse_bg_color(bg_color_str)
     bg_bgr = (bg_rgb[2], bg_rgb[1], bg_rgb[0])
 
-    # Apply padding
-    if pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0:
+    needs_padding = pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0
+
+    if needs_padding and not allow_padding:
+        # Crop-only mode must not add background the camera did not capture.
+        # A sliver from rounding (up to 1% of the frame) repeats the edge pixels;
+        # anything larger means the photo is framed too tightly.
+        max_pad = max(2, int(round(min(crop_width, crop_height) * 0.01)))
+        if max(pad_top, pad_bottom, pad_left, pad_right) > max_pad:
+            raise ValueError(
+                "Your head is too close to the edge of the photo to crop it without "
+                "adding background. Take the photo from a little further away, with "
+                "space above your head and your shoulders in the frame."
+            )
+        padded = cv2.copyMakeBorder(
+            extracted,
+            pad_top, pad_bottom, pad_left, pad_right,
+            cv2.BORDER_REPLICATE,
+        )
+    elif needs_padding:
         padded = cv2.copyMakeBorder(
             extracted,
             pad_top, pad_bottom, pad_left, pad_right,
