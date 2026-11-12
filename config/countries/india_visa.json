@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "country": {
+    "name": "India (visa)",
+    "code": "IN"
+  },
+  "document_type": "visa",
+  "photo_spec": {
+    "width_in": 2,
+    "height_in": 2,
+    "aspect_ratio": 1.0,
+    "print_dpi": 300
+  },
+  "digital_requirements": {
+    "required_resolution_px": {
+      "width": 600,
+      "height": 600
+    },
+    "min_resolution_px": {
+      "width": 350,
+      "height": 350
+    },
+    "max_resolution_px": {
+      "width": 1000,
+      "height": 1000
+    },
+    "max_file_size_kb": 300,
+    "format": [
+      "jpg",
+      "jpeg"
+    ],
+    "background_color": "white"
+  },
+  "face_constraints": {
+    "head_height_pct": {
+      "min": 50,
+      "max": 69
+    },
+    "eye_position": {
+      "from_bottom_pct": {
+        "min": 56,
+        "max": 69
+      }
+    },
+    "top_margin_pct": {
+      "min": 6,
+      "recommended": 9
+    },
+    "chin_to_bottom_pct": {
+      "min": 5
+    }
+  },
+  "pose_rules": {
+    "head_tilt_allowed": false,
+    "expression": "neutral",
+    "eyes_open": true,
+    "mouth_closed": true,
+    "both_ears_visible": false
+  },
+  "background_rules": {
+    "color": "plain white",
+    "shadows_allowed": false,
+    "texture_allowed": false
+  },
+  "print_layout": {
+    "paper_size": "4x6_in",
+    "photos_per_sheet": 6,
+    "spacing_mm": 5,
+    "cut_guides": true
+  },
+  "auto_crop_config": {
+    "head_top_multiplier": 1.24,
+    "eye_line_target_pct": 0.62,
+    "safe_padding_pct": 5
+  },
+  "data_source": "official",
+  "source_url": "https://indianvisaonline.gov.in/evisa/",
+  "source_authority": "Government of India e-Visa and regular visa instructions (JPEG, square, 10 KB to 1 MB for e-Visa, 10-300 KB and 350-1000 px for the regular online form); VFS Global USA photo specs (2 x 2 in print, white background, head 1 to 1 3/8 in)"
+}

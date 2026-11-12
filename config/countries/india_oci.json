@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "country": {
+    "name": "India (OCI card)",
+    "code": "IN"
+  },
+  "document_type": "oci",
+  "photo_spec": {
+    "width_mm": 51,
+    "height_mm": 51,
+    "aspect_ratio": 1.0,
+    "print_dpi": 300
+  },
+  "digital_requirements": {
+    "required_resolution_px": {
+      "width": 600,
+      "height": 600
+    },
+    "min_resolution_px": {
+      "width": 200,
+      "height": 200
+    },
+    "max_resolution_px": {
+      "width": 900,
+      "height": 900
+    },
+    "max_file_size_kb": 200,
+    "format": [
+      "jpg",
+      "jpeg"
+    ],
+    "background_color": "#e0e0e0"
+  },
+  "face_constraints": {
+    "head_height_pct": {
+      "min": 70,
+      "max": 80
+    },
+    "eye_position": {
+      "from_bottom_pct": {
+        "min": 50,
+        "max": 65
+      }
+    },
+    "top_margin_pct": {
+      "min": 5,
+      "recommended": 8
+    },
+    "chin_to_bottom_pct": {
+      "min": 5
+    }
+  },
+  "pose_rules": {
+    "head_tilt_allowed": false,
+    "expression": "neutral",
+    "eyes_open": true,
+    "mouth_closed": true,
+    "both_ears_visible": false
+  },
+  "background_rules": {
+    "color": "#e0e0e0",
+    "shadows_allowed": false,
+    "texture_allowed": false
+  },
+  "print_layout": {
+    "paper_size": "4x6_in",
+    "photos_per_sheet": 6,
+    "spacing_mm": 5,
+    "cut_guides": true
+  },
+  "auto_crop_config": {
+    "head_top_multiplier": 1.24,
+    "eye_line_target_pct": 0.6,
+    "safe_padding_pct": 5
+  },
+  "data_source": "official",
+  "source_url": "https://ociservices.gov.in/onlineOCI/faq",
+  "source_authority": "Ministry of Home Affairs, OCI services FAQ: square, at least 51 x 51 mm, face about 80% of the frame, plain light-coloured background (not white), 200x200 to 900x900 px, JPEG max 200 KB"
+}
