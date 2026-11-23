@@ -202,26 +202,45 @@ def _parse_bg_color(color_str: str) -> tuple[int, int, int]:
     return (255, 255, 255)
 
 
-def _sample_edge_pixels(image: np.ndarray) -> np.ndarray:
-    """Sample pixels from image edges (corners + midpoints + top strip)."""
+# Background check for white / off-white targets. Phone photos of a white wall
+# rarely come out pure white, and off-white is allowed (e.g. the US asks for a
+# "white or off-white" background), so the check asks for a light, neutral and
+# even background instead of an exact colour.
+WHITE_MIN_BRIGHTNESS = 200   # mean of R, G, B (0-255); light grey walls fall below
+WHITE_MAX_TINT = 30          # spread between the R, G, B averages; cream is ~25
+MAX_REGION_STD = 18          # texture or pattern inside one sampled area
+MAX_REGION_SPREAD = 35       # brightness difference between areas: shadows, uneven light
+
+# Down to this fraction of the height, the left and right edges of a
+# head-and-shoulders photo are background. Below it are the shoulders.
+_SIDE_DEPTH = 0.45
+
+
+def _is_white_target(color_str: str) -> bool:
+    """True for white, off-white, cream and "light colored" backgrounds."""
+    s = color_str.lower()
+    if any(c in s for c in ("gray", "grey", "blue", "red")):
+        return False
+    return any(w in s for w in ("white", "cream", "light colored"))
+
+
+def _sample_background_regions(image: np.ndarray) -> list[np.ndarray]:
+    """
+    Pixels from the areas that are background in a head-and-shoulders photo:
+    the outer quarters of the top edge and the upper part of the left and
+    right edges. The bottom edge (shoulders, clothes) is never sampled.
+    """
     h, w = image.shape[:2]
-    margin = min(10, h // 10, w // 10)
-    samples = []
-
-    # 4 corners
-    for cy, cx in [(0, 0), (0, w - margin), (h - margin, 0), (h - margin, w - margin)]:
-        samples.append(image[cy:cy + margin, cx:cx + margin].reshape(-1, 3))
-
-    # 4 border midpoints
-    mh, mw = h // 2, w // 2
-    for cy, cx in [(0, mw - margin // 2), (h - margin, mw - margin // 2),
-                   (mh - margin // 2, 0), (mh - margin // 2, w - margin)]:
-        cy, cx = max(0, min(cy, h - margin)), max(0, min(cx, w - margin))
-        samples.append(image[cy:cy + margin, cx:cx + margin].reshape(-1, 3))
-
-    # Top strip
-    samples.append(image[0:min(5, h), :].reshape(-1, 3))
-    return np.vstack(samples)
+    m = max(2, min(20, h // 20, w // 20))
+    side_h = max(m, int(h * _SIDE_DEPTH))
+    quarter = max(m, w // 4)
+    regions = [
+        image[0:m, 0:quarter],             # top edge, left quarter
+        image[0:m, w - quarter:w],         # top edge, right quarter
+        image[0:side_h, 0:m],              # left edge, upper part
+        image[0:side_h, w - m:w],          # right edge, upper part
+    ]
+    return [r.reshape(-1, 3).astype(np.float64) for r in regions]
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -245,27 +264,57 @@ def validate_background(
     rgb_tolerance: int = 10,
     max_variance: float = 15.0,
 ) -> BackgroundValidationResult:
-    """Check if the image background matches the target color."""
+    """
+    Check if the image background matches the target color.
+
+    White / off-white targets pass when the background is light, neutral and
+    even (see WHITE_* and MAX_REGION_*). Other targets must be within
+    rgb_tolerance of the target colour with a standard deviation of at most
+    max_variance.
+    """
     rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    samples = _sample_edge_pixels(rgb)
+    regions = _sample_background_regions(rgb)
+    samples = np.vstack(regions)
 
     avg = samples.mean(axis=0)
     avg_r, avg_g, avg_b = float(avg[0]), float(avg[1]), float(avg[2])
     brightness = (avg_r + avg_g + avg_b) / 3.0
-    variance = float(samples.std())
     target = _parse_bg_color(target_color)
     dev = max(abs(avg_r - target[0]), abs(avg_g - target[1]), abs(avg_b - target[2]))
 
     issues = []
-    if dev > rgb_tolerance:
-        issues.append(f"RGB deviation {dev:.1f} exceeds tolerance {rgb_tolerance}")
+    if _is_white_target(target_color):
+        tint = float(avg.max() - avg.min())
+        region_std = max(float(r.std(axis=0).max()) for r in regions)
+        region_brightness = [float(r.mean()) for r in regions]
+        spread = max(region_brightness) - min(region_brightness)
+        variance = region_std
 
-    target_brightness = sum(target) / 3.0
-    if brightness < max(target_brightness - 30, 0):
-        issues.append(f"Brightness {brightness:.0f} too low for '{target_color}'")
+        if brightness < WHITE_MIN_BRIGHTNESS:
+            issues.append(
+                f"Background too dark for white/off-white (brightness {brightness:.0f}, "
+                f"needs {WHITE_MIN_BRIGHTNESS})"
+            )
+        if tint > WHITE_MAX_TINT:
+            issues.append(f"Background has a colour tint (RGB spread {tint:.0f}, max {WHITE_MAX_TINT})")
+        if region_std > MAX_REGION_STD:
+            issues.append(f"Background is patterned or textured (std {region_std:.1f}, max {MAX_REGION_STD})")
+        if spread > MAX_REGION_SPREAD:
+            issues.append(
+                f"Background is shadowed or unevenly lit (brightness differs by {spread:.0f} "
+                f"between areas, max {MAX_REGION_SPREAD})"
+            )
+    else:
+        variance = float(samples.std())
+        if dev > rgb_tolerance:
+            issues.append(f"RGB deviation {dev:.1f} exceeds tolerance {rgb_tolerance}")
 
-    if variance > max_variance:
-        issues.append(f"Variance {variance:.1f} exceeds max {max_variance}")
+        target_brightness = sum(target) / 3.0
+        if brightness < max(target_brightness - 30, 0):
+            issues.append(f"Brightness {brightness:.0f} too low for '{target_color}'")
+
+        if variance > max_variance:
+            issues.append(f"Variance {variance:.1f} exceeds max {max_variance}")
 
     is_valid = len(issues) == 0
     logger.info(f"BG validation: valid={is_valid}, rgb=({avg_r:.0f},{avg_g:.0f},{avg_b:.0f}), dev={dev:.1f}")
