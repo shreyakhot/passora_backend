@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GitHub for a new passora_backend commit every 2 minutes
+
+[Timer]
+OnActiveSec=1min
+OnUnitInactiveSec=2min
+RandomizedDelaySec=15s
+
+[Install]
+WantedBy=timers.target

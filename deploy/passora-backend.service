@@ -1,0 +1,16 @@
+[Unit]
+Description=Passora Backend API
+After=network.target
+
+[Service]
+User=__USER__
+Group=__USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__APP_DIR__/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

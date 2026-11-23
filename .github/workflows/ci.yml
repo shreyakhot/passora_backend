@@ -1,0 +1,41 @@
+name: CI
+
+# The server deploys a commit on main only after the "checks" job below has
+# passed for it (see deploy/autodeploy.sh). Keep the job name in sync with
+# CI_CHECK_NAME there.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-24.04 # same Ubuntu and Python (3.12) as the server
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system libraries for OpenCV and MediaPipe
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libgl1 libglib2.0-0
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile
+        run: python -m compileall -q main.py api config services storage scripts
+
+      - name: Check configs, app and crop-only processing
+        run: python scripts/ci_check.py

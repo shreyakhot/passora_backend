@@ -1,0 +1,11 @@
+[Unit]
+Description=Deploy passora_backend main from GitHub when CI has passed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+Environment=APP_DIR=__APP_DIR__
+ExecStart=/bin/bash __APP_DIR__/deploy/autodeploy.sh
+TimeoutStartSec=1800
