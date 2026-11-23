@@ -71,6 +71,14 @@ Required in `.env`:
 - `CLOUDINARY_*` credentials (cloud_name, api_key, api_secret)
 - `API_KEYS` (comma-separated list of valid API keys)
 
-## No Test Suite
+## Tests and CI
 
-This project has no test files. Testing is done via the `audit_cropper.py` diagnostic script or manual endpoint testing.
+There is no unit test suite. `scripts/ci_check.py` is the CI check: it validates every country config, imports the app, and crops `test_face.jpg` in crop-only mode to the US passport size. It runs on GitHub (`.github/workflows/ci.yml`, job `checks`) for every push and pull request. Use `scratch/audit_cropper.py` or manual endpoint testing for deeper checks.
+
+## Deployment
+
+The API runs on AWS EC2 as the systemd service `passora-backend`, from a git checkout at `/home/ubuntu/passora_backend`. Deploys are pull-based: `passora-autodeploy.timer` runs `deploy/autodeploy.sh` every 2 minutes. When a new commit on `main` has passed CI, the script deploys it, and rolls back if `/health` fails. Pushing to `main` is the whole deploy. See `deploy/README.md`.
+
+- Keep the CI job name `checks` in sync with `CI_CHECK_NAME` in `deploy/autodeploy.sh`.
+- Systemd units live in `deploy/` as templates (`__USER__`, `__APP_DIR__`). Deploys reinstall them when they change.
+- A new country/document config only needs its JSON file. The frontend entry must go live after the backend deploy has finished.
