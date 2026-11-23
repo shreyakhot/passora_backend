@@ -96,8 +96,25 @@ def check_crop_only() -> None:
     )
 
 
+def _report_failure(message: str) -> None:
+    """Print the failure; on GitHub Actions also add it as an annotation on the commit."""
+    print(message, file=sys.stderr)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=CI check failed::{escaped}")
+
+
 if __name__ == "__main__":
-    check_configs()
-    check_app()
-    check_crop_only()
+    import traceback
+
+    try:
+        check_configs()
+        check_app()
+        check_crop_only()
+    except SystemExit as exc:
+        _report_failure(str(exc.code))
+        sys.exit(1)
+    except Exception:  # noqa: BLE001 - any error fails CI with its traceback
+        _report_failure(traceback.format_exc())
+        sys.exit(1)
     print("All checks passed")
