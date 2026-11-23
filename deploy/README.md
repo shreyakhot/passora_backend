@@ -46,7 +46,7 @@ These steps are already done on the current server. They are only needed for a n
 2. **Install packages and clone the repo** as `ubuntu`:
 
    ```bash
-   sudo apt update && sudo apt install -y python3-venv python3-pip git curl nginx libgl1 libglib2.0-0
+   sudo apt update && sudo apt install -y python3-venv python3-pip git curl nginx libgl1 libglib2.0-0 libgles2 libegl1
    git clone https://github.com/shreyakhot/passora_backend.git ~/passora_backend
    cd ~/passora_backend
    python3 -m venv venv && venv/bin/pip install -r requirements.txt
